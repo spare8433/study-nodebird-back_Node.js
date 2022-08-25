@@ -1,16 +1,59 @@
 const express = require('express');
-const { Post, User, Comment, Image } = require('../models');
+const multer = require('multer')
+const path = require('path')  // 파일이나 디렉토리의 경로를 다룰 때 사용하는 기본제공 모듈
+const fs = require('fs') // 파일 입출력 처리를 할 때 사용하는 기본제공 모듈
+const { Post, User, Comment, Image, Hashtag } = require('../models');
 const { isLoggedIn } = require('./middlewares')
 
 const router = express.Router();
 
-router.post('/', isLoggedIn, async (req, res, next) => {
+try {
+  fs.accessSync('uploads');
+} catch (error) {
+  fs.mkdirSync('uploads')
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination(req, file, done) {
+      done(null, 'uploads')
+    },
+    filename(req, file, done) {   //파일 이름이 중복되면 덮어씌워질 수 있으므로 시간정보를 붙여 저장
+      console.log(file);
+      const ext = path.extname(file.originalname)   // 확장자 추출 ex) .png
+      const basename = path.basename(file.originalname, ext)  // 파일 이름
+      done(null, basename + '_' + new Date().getTime() + ext) // ex) 기러기이미지201511232.png
+    }
+  }),
+  limits: { fileSize: 20 * 1024 * 1024}
+})
+
+router.post('/', isLoggedIn, upload.none(), async (req, res, next) => {
   console.log(req.body.content);
   try {
+    const hashtags = req.body.content.match(/#[^\s#]+/g)
     const post = await Post.create({
       content: req.body.content,
       UserId: req.user.id
     })
+
+    if (hashtags) {
+      /** return ex) [[#노드, true], [#리액트, false]] */
+      const result = await Promise.all(hashtags.map((tag) => Hashtag.findOrCreate({
+         where: { name: tag.slice(1).toLowerCase() },
+      })))
+      await post.addHashtags(result.map((v) => v[0]))
+    }
+
+    if (req.body.image) { // 이미지 정보가 있을때
+      if (Array.isArray(req.body.image)){ // 여러개의 이미지일 경우 배열로 받아 처리
+        const images = await Promise.all(req.body.image.map((img) => Image.create({ src: img })))
+        await post.addImages(images)
+      } else {
+        const image = await Image.create({ src: req.body.image })
+        await post.addImages(image)
+      }
+    }
 
     const fullPost = await Post.findOne({
       where: { id: post.id },
@@ -37,6 +80,11 @@ router.post('/', isLoggedIn, async (req, res, next) => {
     next(error)
   }
 })
+
+router.post('/images', isLoggedIn, upload.array('image'), async (req, res, next) => {
+  console.log(req.files);
+  res.json(req.files.map((v) => v.filename))
+});
 
 router.post('/:postId/comment', isLoggedIn, async (req, res, next) => {
   try {

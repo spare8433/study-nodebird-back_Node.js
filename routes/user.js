@@ -3,7 +3,6 @@ const bcrypt = require('bcrypt')
 const { User, Post } = require('../models')
 const passport = require('passport');
 const db = require('../models');
-
 const router = express.Router();
 const { isLoggedIn, isNotLoggedIn } = require('./middlewares')
 
@@ -107,10 +106,6 @@ router.post('/logout', isLoggedIn, (req, res, next) => {
   res.send('ok')
 })
 
-router.delete('/', (req, res) => {
-  res.json({ id: 1})
-})
-
 
 router.patch('/nickname', isLoggedIn, async (req, res, next) => {
   try {
@@ -126,5 +121,75 @@ router.patch('/nickname', isLoggedIn, async (req, res, next) => {
   }
 })
 
+router.patch('/:userId/follow', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { id: req.params.userId }})
+    if(!user) {
+      return res.status(403).send('팔로우 하려는 대상이 존재하지 않습니다.')
+    }
+    await user.addFollowers(req.user.id)
+    res.status(200).json({ UserId: parseInt(req.params.userId) })
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
+
+router.delete('/:userId/follow', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { id: req.params.userId }})
+    if(!user) {
+      return res.status(403).send('언팔로우 하려는 대상이 존재하지 않습니다.')
+    }
+    await user.removeFollowers(req.user.id)
+    res.status(200).json({ UserId: parseInt(req.params.userId) })
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
+
+router.get('/followers', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { id: req.user.id }})
+    console.log('followers', user);
+    if(!user) {
+      return res.status(403).send('존재하지 않는 사용자의 요청입니다')
+    }
+    const followers = await user.getFollowers()
+    res.status(200).json(followers)
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
+
+router.get('/followings', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { id: req.user.id }})
+    if(!user) {
+      return res.status(403).send('존재하지 않는 사용자의 요청입니다')
+    }
+    const followings = await user.getFollowings()
+    res.status(200).json(followings)
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
+
+router.delete('/follower/:userId', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { id: req.user.id }})
+    if(!user) {
+      return res.status(403).send('차단 하려는 대상이 존재하지 않습니다.')
+    }
+    await user.removeFollowers()
+    res.status(200).json({ UserId: parseInt(req.params.userId) })
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
 
 module.exports = router;

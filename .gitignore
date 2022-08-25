@@ -4,3 +4,7 @@
 /config
 
 /package-lock.json
+
+
+# dev
+/uploads

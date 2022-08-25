@@ -1,7 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   const Image = sequelize.define('Image', {
     src: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
   }, {

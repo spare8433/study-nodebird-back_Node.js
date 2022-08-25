@@ -1,16 +1,18 @@
 const express = require('express')
+const session = require('express-session')
+const cookieParser = require('cookie-parser')
+const cors = require('cors')
+const moran = require('morgan')
+const path = require('path')
+const dotenv = require('dotenv')
 const db = require('./models')
 const postRotuer = require('./routes/post')
 const postsRotuer = require('./routes/posts')
 const userRotuer = require('./routes/user')
-const app = express()
-const cors = require('cors')
-const moran = require('morgan')
-const passportConfig = require('./passport')
 const passport = require('passport')
-const session = require('express-session')
-const cookieParser = require('cookie-parser')
-const dotenv = require('dotenv')
+const passportConfig = require('./passport')
+
+const app = express()
 
 dotenv.config()
 
@@ -21,6 +23,7 @@ db.sequelize.sync()
 
 passportConfig();
 
+app.use('/', express.static(path.join(__dirname, 'uploads')))
 app.use(express.json()) // json 데이터 처리
 app.use(express.urlencoded({ extended: true })) // form 관련 데이터처리
 app.use(cookieParser(process.env.COOKIE_SECRET))
