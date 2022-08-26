@@ -157,4 +157,77 @@ router.delete('/:postId', isLoggedIn, async (req, res, next) => {
   }
 })
 
+router.post('/:postId/retweet', isLoggedIn, async (req, res, next) => {
+  try {
+    const post = await Post.findOne({
+      where: { id: req.params.postId },
+      include: [{
+        model: Post,
+        as: 'Retweet',
+      }],
+    })
+
+    if(!post) return res.status(403).send('존재하지 않는 게시글입니다.')
+
+    console.log('post', post);
+
+    // 자신의 글 리트윗 및 자신의글에 리트윗한 글을 리트윗 금지
+    if (req.user.id === post.UserId || post.Retweet?.UserId === req.user.id) {
+      if(post) return res.status(403).send('자신의 글은 리트윗 할 수 없습니다.')
+    }
+    const retweetTargetId = post.RetweetId || post.id
+
+    const exPost = await Post.findOne({
+      where: {
+        UserId: req.user.id,
+        RetweetId: retweetTargetId,
+      }
+    })
+
+    if (exPost) return res.status(403).send('한개의 글당 한번의 리트윗만 할 수 잇습니다.')
+
+    const retweet = await Post.create({
+      UserId: req.user.id,
+        RetweetId: retweetTargetId,
+        content: 'ret'
+    })
+
+    const retweetWithPrevPost = await Post.findOne({
+      where: {
+        id: retweet.RetweetId
+      },
+      include: [{
+        model: Post,
+        as: 'Retweet',
+        include: [{
+          model: User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: Image,
+        }]
+      }, {
+        model: User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: Image,
+      }, {
+        model: User,
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: Comment,
+        include: [{
+          model: User,
+          attributes: ['id', 'nickname'],
+        }]
+      }]
+    })
+
+    res.status(201).json(retweetWithPrevPost)
+  } catch (error) { 
+    console.error(error);
+    next(error)
+  }
+})
+
 module.exports = router;
