@@ -1,15 +1,15 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
-const { User, Post } = require('../models')
+const { User, Post, Comment, Image } = require('../models')
 const passport = require('passport');
 const db = require('../models');
 const router = express.Router();
 const { isLoggedIn, isNotLoggedIn } = require('./middlewares')
 
-
+// 본인 정보 가져오기
 router.get('/', isLoggedIn, async (req, res, next) => {
   try {
-    if (!req.user) return res.status(200).json(null)
+    if (!req.user) return res.status(401).json(null)
     const fullUserWithoutPassword = await User.findOne({
       where: { id: req.user.id },
       attributes: {
@@ -29,10 +29,95 @@ router.get('/', isLoggedIn, async (req, res, next) => {
       }]
     })
 
-    res.status(200).json(fullUserWithoutPassword)
+    if(fullUserWithoutPassword) {
+      res.status(200).json(fullUserWithoutPassword)
+    } else
+      res.status(404).json(null)
   } catch (error) {
     console.error(error);
     next(error)
+  }
+})
+
+// 특저 유저 정보 가져오기
+router.get('/:userId', async (req, res, next) => {
+  try {
+    const fullUserWithoutPassword = await User.findOne({
+      where: { id: parseInt(req.params.userId) },
+      attributes: {
+        exclued: ['password']
+      },
+      include: [{
+        model: Post,
+        attributes: ['id'],
+      }, {
+        model: User,
+        as: 'Followings',
+        attributes: ['id'],
+      }, {  
+        model: User,
+        as: 'Followers',
+        attributes: ['id'],
+      }]
+    })
+    console.log('뭐임', fullUserWithoutPassword);
+    if(fullUserWithoutPassword) {
+      const data = fullUserWithoutPassword.toJSON()
+      data.Posts = data.Posts.length
+      data.Followers = data.Followers.length
+      data.Followings = data.Followings.length
+      res.status(200).json(data) 
+    } else
+      res.status(404).json('존재하는 사용자가 아닙니다.')
+  } catch (error) {
+    console.error(error);
+    next(error)
+  }
+})
+
+router.get('/:userId/posts', async (req, res, next) => {
+  try {
+    const where = { UserId: req.params.userId }
+    if(parseInt(req.query.lastId, 10)) {
+      where.id = { [Op.lt]: parseInt(req.query.lastId, 10) } // lastId 보다 작은거 10개
+    }
+
+    const posts = await Post.findAll({
+      where,
+      limit: 10,
+      order: [
+        ['createdAt', 'DESC'],
+        [Comment,'createdAt', 'DESC'] // 댓글 정렬
+      ],
+      include: [{
+        model: User,
+        attributes: ['id', 'nickname']
+      }, {
+        model: Post,
+        as: 'Retweet',
+        include: [{
+          model: User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: Image,
+        }]
+      }, {
+        model: Image,
+      }, {
+        model: Comment,
+        include: [{
+          model: User,
+          attributes: ['id', 'nickname'],
+        }]
+      }, {
+        model: User,  // 좋아요 누른사람
+        as: 'Likers',
+        attributes: ['id']
+      }]
+    })
+    res.status(200).send(posts)
+  } catch (error) {
+    console.error(error);
   }
 })
 
@@ -60,6 +145,7 @@ router.post('/', isNotLoggedIn, async (req, res) => {
     next(error) // status 500
   }
 })
+
 
 router.post('/login', isNotLoggedIn, (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {

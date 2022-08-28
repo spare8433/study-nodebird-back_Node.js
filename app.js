@@ -9,6 +9,7 @@ const db = require('./models')
 const postRotuer = require('./routes/post')
 const postsRotuer = require('./routes/posts')
 const userRotuer = require('./routes/user')
+const hashtagRotuer = require('./routes/hashtag')
 const passport = require('passport')
 const passportConfig = require('./passport')
 
@@ -47,6 +48,7 @@ app.get('/', (req, res) => {
 app.use('/post', postRotuer)
 app.use('/posts', postsRotuer)
 app.use('/user', userRotuer)
+app.use('/hashtag', hashtagRotuer)
 
 app.listen(3065, () => {
   console.log('서버 실행중');
