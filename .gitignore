@@ -8,3 +8,7 @@
 
 # dev
 /uploads
+
+# misc
+.DS_Store
+*.pem
