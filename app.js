@@ -36,7 +36,7 @@ app.use(cookieParser(process.env.COOKIE_SECRET))
 
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'nodebird.com'],
+  origin: ['http://localhost:3000', 'nodebird.com', `http://${process.env.FRONT_URL}`],
   credentials: true,  // 쿠키 공유
 }))
 app.use(session({
