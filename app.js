@@ -2,9 +2,13 @@ const express = require('express')
 const session = require('express-session')
 const cookieParser = require('cookie-parser')
 const cors = require('cors')
-const moran = require('morgan')
+const morgan = require('morgan')
 const path = require('path')
 const dotenv = require('dotenv')
+const hpp = require('hpp')
+const helmet = require('helmet')
+
+
 const db = require('./models')
 const postRotuer = require('./routes/post')
 const postsRotuer = require('./routes/posts')
@@ -28,9 +32,11 @@ app.use('/', express.static(path.join(__dirname, 'uploads')))
 app.use(express.json()) // json 데이터 처리
 app.use(express.urlencoded({ extended: true })) // form 관련 데이터처리
 app.use(cookieParser(process.env.COOKIE_SECRET))
-app.use(moran('dev'))
+
+
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'nodebird.com'],
   credentials: true,  // 쿠키 공유
 }))
 app.use(session({
@@ -50,6 +56,16 @@ app.use('/posts', postsRotuer)
 app.use('/user', userRotuer)
 app.use('/hashtag', hashtagRotuer)
 
-app.listen(3065, () => {
-  console.log('서버 실행중');
-})
+if (process.env.NODE_ENV  === 'production') {
+  app.use(morgan('combined'))
+  app.use(hpp())
+  app.use(helmet())
+  app.listen(80, () => {
+    console.log('실 서버 실행중');
+  })
+} else {
+  app.use(morgan('dev'))
+  app.listen(3065, () => {
+    console.log('개발 서버 실행중');
+  })
+}
