@@ -42,9 +42,12 @@ app.use(cors({
 app.use(session({
   saveUninitialized: false,
   resave: false,
-  secret: false,
-  domain: process.env.NODE_ENV === 'production' && '.spare8433.kro.kr'
-
+  secret: process.env.COOKIE_SECRET,
+  cookie:{
+    httpOnly:true,
+    secure: false,
+    domain: process.env.NODE_ENV === 'production' && '.spare8433.kro.kr'
+  }
 }))
 app.use(passport.initialize())
 app.use(passport.session())
