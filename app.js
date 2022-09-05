@@ -36,13 +36,15 @@ app.use(cookieParser(process.env.COOKIE_SECRET))
 
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'nodebird.com', `http://${process.env.FRONT_URL}`],
+  origin: ['http://localhost:3000', `http://${process.env.FRONT_URL}`],
   credentials: true,  // 쿠키 공유
 }))
 app.use(session({
   saveUninitialized: false,
   resave: false,
-  secret: process.env.COOKIE_SECRET
+  secret: false,
+  domain: process.env.NODE_ENV === 'production' && '.spare8433.kro.kr'
+
 }))
 app.use(passport.initialize())
 app.use(passport.session())
