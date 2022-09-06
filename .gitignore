@@ -1,6 +1,7 @@
 .env
 /node_modules
-
+/lambda/node_modules
+/lambda/package-lock.json
 /config
 
 /package-lock.json
