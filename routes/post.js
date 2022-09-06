@@ -2,8 +2,10 @@ const express = require('express');
 const multer = require('multer')
 const path = require('path')  // 파일이나 디렉토리의 경로를 다룰 때 사용하는 기본제공 모듈
 const fs = require('fs') // 파일 입출력 처리를 할 때 사용하는 기본제공 모듈
+const multerS3 = require('multer-s3')
+const AWS = require('aws-sdk')
 const { Post, User, Comment, Image, Hashtag } = require('../models');
-const { isLoggedIn } = require('./middlewares')
+const { isLoggedIn } = require('./middlewares');
 
 const router = express.Router();
 
@@ -13,16 +15,18 @@ try {
   fs.mkdirSync('uploads')
 }
 
+AWS.config.update({
+  accessKeyId: process.env.S3_ACCESS_KEY_ID,
+  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  regeion:ap-northeast-2
+})
+
 const upload = multer({
-  storage: multer.diskStorage({
-    destination(req, file, done) {
-      done(null, 'uploads')
-    },
-    filename(req, file, done) {   //파일 이름이 중복되면 덮어씌워질 수 있으므로 시간정보를 붙여 저장
-      console.log(file);
-      const ext = path.extname(file.originalname)   // 확장자 추출 ex) .png
-      const basename = path.basename(file.originalname, ext)  // 파일 이름
-      done(null, basename + '_' + new Date().getTime() + ext) // ex) 기러기이미지201511232.png
+  storage: multerS3({
+    s3: new AWS.S3(),
+    bucket: 'spare-nodebird',
+    key(req, file, cb) {
+      cb(null, `original/${Date.now()}_${path.basename(file.originalname)}`)
     }
   }),
   limits: { fileSize: 20 * 1024 * 1024}
@@ -83,7 +87,7 @@ router.post('/', isLoggedIn, upload.none(), async (req, res, next) => {
 
 router.post('/images', isLoggedIn, upload.array('image'), async (req, res, next) => {
   console.log(req.files);
-  res.json(req.files.map((v) => v.filename))
+  res.json(req.files.map((v) => v.location))
 });
 
 router.post('/:postId/comment', isLoggedIn, async (req, res, next) => {
